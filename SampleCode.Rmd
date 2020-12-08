@@ -1,0 +1,161 @@
+---
+title: "Sample Code in dxpr paper"
+author: Yi-Ju Tseng, Hsiang-Ju Chiu, Chun-Ju Chen
+output: github_document
+---
+dxpr: An R package for generating analysis-ready data from electronic health records—diagnoses and procedures
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+# Preparation for analysis
+
+```{r install, eval=F}
+devtools::install_github("DHLab-TSENG/dxpr")
+```
+```{r lib}
+library(dxpr)
+```
+
+# Data integration
+## Code format transformation
+
+
+```{r code}
+ICD_Decimal <- icdDxShortToDecimal(dxDataFile = sampleDxFile,
+                                   icdColName = ICD,
+                                   dateColName = Date, 
+                                   icd10usingDate = "2015/10/01")
+sampleDxFile$Decimal <- ICD_Decimal$ICD
+head(sampleDxFile)
+tail(ICD_Decimal$Error)
+```
+
+## Code grouping
+
+```{r group}
+CCS_description <- icdDxToCCS(dxDataFile = sampleDxFile,
+                              idColName = ID,
+                              icdColName = ICD,
+                              dateColName = Date, 
+                              icd10usingDate = "2015-10-01", 
+                              isDescription = TRUE)
+CCS_description$groupedDT[CCS_description$groupedDT$ID=="A0",]
+
+```
+
+# Data wrangling
+## Case selection
+```{r case}
+Case <- selectCases(dxDataFile = sampleDxFile,
+                    idColName = ID,
+                    icdColName = ICD, 
+                    dateColName = Date, 
+                    icd10usingDate = "2015/10/01",
+                    groupDataType = ccslvl2,
+                    caseCondition = "Diseases of the urinary system",
+                    isDescription = TRUE,
+                    caseCount = 1,
+                    periodRange = c(30, 365)) 
+head(Case)
+tail(Case)
+```
+
+## Eligible period identification
+```{r Eligible}
+admissionDate <- getEligiblePeriod(dxDataFile = sampleDxFile,
+                                   idColName = ID,
+                                   dateColName = Date)
+head(admissionDate) 
+```
+
+## Data splitting based on index date and moving window
+```{r split}
+indexDateTable <- data.frame (ID = c("A0","B0","C0","D0"),
+                              indexDate = c("2023-08-12", "2015-12-26",
+                                            "2015-12-05", "2017-01-29"))
+Data <- splitDataByDate(dxDataFile = sampleDxFile[grepl("A0|B0|C0|D0",ID),],
+                        idColName = ID,
+                        icdColName = ICD,
+                        dateColName = Date,
+                        indexDateFile = indexDateTable,
+                        gap = 30)
+Data[6:11,]
+```
+
+
+## Condition era generation
+```{r era}
+Era <- getConditionEra(dxDataFile = sampleDxFile,
+                       idColName = ID,
+                       icdColName = ICD,
+                       dateColName = Date,
+                       icd10usingDate = "2015/10/01",
+                       groupDataType = CCS,
+                       isDescription = FALSE,
+                       gapDate = 360)
+head(Era)
+
+```
+
+
+## Analysis-ready data generation
+```{r ARD}
+CHARLSON <- icdDxToComorbid(dxDataFile = sampleDxFile,
+                            idColName = ID,
+                            icdColName = ICD,
+                            dateColName = Date,
+                            icd10usingDate = "2015-10-01",
+                            comorbidMethod = CHARLSON)
+groupedData_Wide <- groupedDataLongToWide(dxDataFile  = CHARLSON$groupedDT,
+                                          idColName = ID,
+                                          categoryColName = Comorbidity,
+                                          dateColName = Date,
+                                          reDup = TRUE,
+                                          numericOrBinary = B,
+                                          count = 2)
+head(groupedData_Wide, 5)
+```
+
+# Visualization
+## Pareto chart of error ICD
+```{r Pareto}
+error <- icdDxDecimalToShort(dxDataFile = sampleDxFile,
+                             icdColName = ICD,
+                             dateColName = Date,
+                             icd10usingDate = "2015/10/01")
+plot1 <- plotICDError(errorFile = error$Error,
+                      icdVersion = all,
+                      wrongICDType = all,
+                      groupICD = FALSE,
+                      others = TRUE, 
+                      topN = 10)
+plot1$graph
+plot1$ICD
+```
+
+
+## Bar chart of diagnostic categories
+```{r Bar}
+ELIX <- icdDxToComorbid(dxDataFile  = sampleDxFile,
+                        idColName = ID,
+                        icdColName = ICD,
+                        dateColName = Date,
+                        icd10usingDate = "2015-10-01",
+                        comorbidMethod = ELIX)
+groupedDataWide <- groupedDataLongToWide(dxDataFile  = ELIX$groupedDT,
+                                         idColName = ID,
+                                         categoryColName = Comorbidity,
+                                         dateColName = Date,
+                                         reDup = TRUE,
+                                         numericOrBinary = B)
+plot2 <- plotDiagCat(groupedDataWide = groupedDataWide,
+                     idColName = ID,
+                     topN = 10,
+                     limitFreq = 0.01)
+plot2$graph
+plot2$sigCate
+```
+
+

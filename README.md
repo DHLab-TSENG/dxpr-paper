@@ -1,5 +1,9 @@
 # dxpr-paper
-Supplementary data of a submitted manuscript
+Supplementary data of a published manuscript
 
-dxpr: An R package for generating analysis-ready data from electronic health records—diagnoses and procedures
+Tseng, Yi-Ju, Hsiang-Ju Chiu, and Chun Ju Chen. 2021. “dxpr: An R Package for Generating Analysis-Ready Data from Electronic Health Records—diagnoses and Procedures.” PeerJ Computer Science 7 (May): e520.
+
+https://peerj.com/articles/cs-520/
+
+Package GitHub: https://github.com/DHLab-TSENG/dxpr
 
